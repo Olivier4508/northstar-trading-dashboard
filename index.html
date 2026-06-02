@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Northstar Trading Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="app-header">
+        <div class="brand-block">
+          <div class="brand-mark">N</div>
+          <div>
+            <p class="section-kicker">Northstar v2</p>
+            <h1>Trading Desk</h1>
+          </div>
+        </div>
+
+        <div class="top-tape" id="data-tape"></div>
+
+        <div class="header-actions">
+          <span id="sync-status" class="status-pill status-pill--pending">Mock Sync</span>
+          <button class="button button--ghost" id="demo-reset" type="button">Reset</button>
+        </div>
+      </header>
+
+      <main class="terminal-layout">
+        <section class="workspace">
+          <section class="control-strip">
+            <form id="wallet-form" class="inline-form">
+              <label class="compact-field compact-field--wallet">
+                <span>Wallet</span>
+                <input
+                  id="wallet-input"
+                  name="wallet"
+                  type="text"
+                  placeholder="0x1234...abcd"
+                  autocomplete="off"
+                />
+              </label>
+              <button class="button button--primary" id="wallet-submit" type="submit">Live Sync</button>
+            </form>
+
+            <form id="csv-form" class="inline-form">
+              <label class="compact-field compact-field--file">
+                <span>CSV</span>
+                <span class="file-control">
+                  <span class="file-button">Import CSV</span>
+                  <span id="csv-file-name" class="file-name">No file loaded</span>
+                </span>
+                <input id="csv-input" name="csv" type="file" accept=".csv,text/csv" />
+              </label>
+            </form>
+          </section>
+
+          <section class="chart-stage">
+            <div class="panel chart-panel tradingview-panel">
+              <div class="panel__heading">
+                <div>
+                  <p class="section-kicker">TradingView</p>
+                  <h2>Live Charts</h2>
+                </div>
+                <form id="chart-add-form" class="chart-add-form">
+                  <input
+                    id="chart-symbol-input"
+                    type="text"
+                    placeholder="AAPL, BTC, HYPE, NASDAQ:TSLA..."
+                    autocomplete="off"
+                  />
+                  <button class="icon-button" id="chart-add-button" type="submit" aria-label="Add chart">+</button>
+                </form>
+              </div>
+              <div class="chart-quick-list" id="chart-quick-list" aria-label="Quick crypto charts"></div>
+              <div id="tradingview-deck" class="tradingview-deck"></div>
+            </div>
+          </section>
+
+          <section class="metric-grid" id="overview-grid"></section>
+
+          <section class="dense-grid">
+            <div class="panel panel--positions">
+              <div class="panel__heading">
+                <div>
+                  <p class="section-kicker">Risk</p>
+                  <h2>Open Positions</h2>
+                </div>
+                <span id="position-count" class="muted-label"></span>
+              </div>
+              <div id="positions-table" class="table-shell"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel__heading">
+                <div>
+                  <p class="section-kicker">Symbols</p>
+                  <h2>Attribution</h2>
+                </div>
+              </div>
+              <div id="symbol-table" class="table-shell"></div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel__heading">
+              <div>
+                <p class="section-kicker">Ledger</p>
+                <h2>Recent Fills</h2>
+              </div>
+              <span id="trade-count" class="muted-label"></span>
+            </div>
+            <div id="trades-table" class="table-shell"></div>
+          </section>
+        </section>
+
+        <aside class="right-rail">
+          <section class="panel assistant-panel">
+            <div class="panel__heading">
+              <div>
+                <p class="section-kicker">Assistant</p>
+                <h2>Performance Query</h2>
+              </div>
+              <span id="assistant-status" class="assistant-status">Local LLM</span>
+            </div>
+
+            <div id="assistant-suggestions" class="chip-row"></div>
+            <div id="assistant-messages" class="assistant-messages"></div>
+
+            <form id="assistant-form" class="assistant-form">
+              <input
+                id="assistant-input"
+                name="question"
+                type="text"
+                placeholder="Ask about PnL, risk, symbols..."
+                autocomplete="off"
+              />
+              <button class="button button--primary" type="submit">Ask</button>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel__heading">
+              <div>
+                <p class="section-kicker">Exposure</p>
+                <h2>Risk Tape</h2>
+              </div>
+            </div>
+            <div id="risk-strip" class="risk-grid"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel__heading">
+              <div>
+                <p class="section-kicker">Readout</p>
+                <h2>Drivers</h2>
+              </div>
+            </div>
+            <div id="insights-list" class="insights-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel__heading">
+              <div>
+                <p class="section-kicker">Pipeline</p>
+                <h2>Data Queue</h2>
+              </div>
+            </div>
+            <div id="roadmap-list" class="queue-list"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <script defer src="./src/mock-data.js"></script>
+    <script defer src="./src/hyperliquid.js"></script>
+    <script defer src="./src/app.js"></script>
+  </body>
+</html>

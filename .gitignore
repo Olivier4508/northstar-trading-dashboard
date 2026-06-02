@@ -1,0 +1,6 @@
+.DS_Store
+.env
+.env.local
+.northstar.log
+.northstar.pid
+dashboard-*.png
