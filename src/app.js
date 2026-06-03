@@ -69,6 +69,12 @@ const storageKeys = {
   lastWallet: "northstar.lastWallet"
 };
 
+const assistantContextLimits = {
+  recentTrades: 30,
+  fundingRows: 20,
+  conversationMessages: 8
+};
+
 const flashState = new Map();
 let draggedChartId = null;
 let draggedMetricId = null;
@@ -302,7 +308,7 @@ function setAssistantStatus(label, mode = "idle") {
 
 function buildAssistantContext() {
   const metrics = state.metrics ?? computeMetrics(state.dataset);
-  const recentTrades = metrics.trades.slice(0, 80).map((trade) => ({
+  const recentTrades = metrics.trades.slice(0, assistantContextLimits.recentTrades).map((trade) => ({
     time: trade.time,
     symbol: trade.symbol,
     side: trade.side,
@@ -361,9 +367,9 @@ function buildAssistantContext() {
     positions: metrics.positions,
     symbolAttribution: metrics.symbolAttribution,
     recentTrades,
-    funding: (state.dataset.funding ?? []).slice(0, 80),
+    funding: (state.dataset.funding ?? []).slice(0, assistantContextLimits.fundingRows),
     chartWidgets: state.chartWidgets,
-    conversationHistory: state.messages.slice(-20)
+    conversationHistory: state.messages.slice(-assistantContextLimits.conversationMessages)
   };
 }
 

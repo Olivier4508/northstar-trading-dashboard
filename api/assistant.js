@@ -1,4 +1,6 @@
-const openaiModel = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const openaiModel = process.env.OPENAI_MODEL || "gpt-4.1-nano";
+const quotaErrorHelp =
+  "OpenAI quota is exhausted or billing is not active. Add API billing/credits or raise the project monthly budget in the OpenAI Platform, then redeploy/retry.";
 
 function sendJson(response, status, payload) {
   response.status(status).json(payload);
@@ -37,6 +39,17 @@ function buildInstructions() {
     "When values differ, explain the distinction between unified Portfolio Value, Perps Account, open exposure, margin used, realized PnL, and unrealized PnL.",
     "If the user asks why the app made a design choice, use the designDecisions context."
   ].join("\n");
+}
+
+function getOpenAiErrorMessage(payload, status) {
+  const message = payload.error?.message ?? `OpenAI request failed with HTTP ${status}.`;
+  const code = payload.error?.code;
+
+  if (status === 429 && (code === "insufficient_quota" || message.toLowerCase().includes("quota"))) {
+    return quotaErrorHelp;
+  }
+
+  return message;
 }
 
 export default async function handler(request, response) {
@@ -87,7 +100,7 @@ export default async function handler(request, response) {
           ]
         }
       ],
-      max_output_tokens: 700
+      max_output_tokens: 450
     })
   });
 
@@ -95,7 +108,7 @@ export default async function handler(request, response) {
 
   if (!openaiResponse.ok) {
     sendJson(response, openaiResponse.status, {
-      error: payload.error?.message ?? `OpenAI request failed with HTTP ${openaiResponse.status}.`
+      error: getOpenAiErrorMessage(payload, openaiResponse.status)
     });
     return;
   }

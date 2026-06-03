@@ -5,8 +5,10 @@ import { extname, join, normalize } from "node:path";
 const cwd = process.cwd();
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || "127.0.0.1";
-const openaiModel = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const openaiModel = process.env.OPENAI_MODEL || "gpt-4.1-nano";
 const maxBodyBytes = 1_500_000;
+const quotaErrorHelp =
+  "OpenAI quota is exhausted or billing is not active. Add API billing/credits or raise the project monthly budget in the OpenAI Platform, then redeploy/retry.";
 
 function loadEnvFile(fileName) {
   const filePath = join(cwd, fileName);
@@ -95,6 +97,17 @@ function buildInstructions() {
   ].join("\n");
 }
 
+function getOpenAiErrorMessage(payload, status) {
+  const message = payload.error?.message ?? `OpenAI request failed with HTTP ${status}.`;
+  const code = payload.error?.code;
+
+  if (status === 429 && (code === "insufficient_quota" || message.toLowerCase().includes("quota"))) {
+    return quotaErrorHelp;
+  }
+
+  return message;
+}
+
 async function handleAssistant(request, response) {
   if (!process.env.OPENAI_API_KEY) {
     sendJson(response, 503, {
@@ -138,7 +151,7 @@ async function handleAssistant(request, response) {
           ]
         }
       ],
-      max_output_tokens: 700
+      max_output_tokens: 450
     })
   });
 
@@ -146,7 +159,7 @@ async function handleAssistant(request, response) {
 
   if (!openaiResponse.ok) {
     sendJson(response, openaiResponse.status, {
-      error: payload.error?.message ?? `OpenAI request failed with HTTP ${openaiResponse.status}.`
+      error: getOpenAiErrorMessage(payload, openaiResponse.status)
     });
     return;
   }

@@ -34,13 +34,13 @@ Or create a private `.env.local` file in this folder:
 
 ```text
 OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-4.1-nano
 ```
 
 Optional:
 
 ```bash
-OPENAI_MODEL=gpt-4.1-mini
+OPENAI_MODEL=gpt-4.1-nano
 ```
 
 If the app is opened directly as `index.html`, live Hyperliquid data still works, but the LLM assistant needs the local server at `http://127.0.0.1:3000`.
@@ -53,7 +53,7 @@ The app is ready for Vercel-style static hosting with a serverless assistant end
 - the hosted LLM endpoint lives at [api/assistant.js](/Users/olivedf/Documents/Trading%20Dashboard/api/assistant.js)
 - [vercel.json](/Users/olivedf/Documents/Trading%20Dashboard/vercel.json) configures the serverless function and no-store API responses
 - `OPENAI_API_KEY` is stored once in the hosting provider's environment variable settings
-- `OPENAI_MODEL` is optional and defaults to `gpt-4.1-mini`
+- `OPENAI_MODEL` is optional and defaults to `gpt-4.1-nano`
 
 On Vercel:
 
