@@ -85,6 +85,7 @@ Default recommendation:
 
 - `gemini`: best first choice for answer quality and Google AI Studio's free testing tier.
 - `groq`: best fallback if you want ultra-fast responses and very low paid token prices.
+- Configure both keys if possible: the assistant will try the selected provider first, then fall back to the other provider on temporary overloads, rate limits, or quota errors.
 
 Vercel Gemini env:
 
@@ -92,6 +93,8 @@ Vercel Gemini env:
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash-lite
+GROQ_API_KEY=...
+GROQ_MODEL=llama-3.1-8b-instant
 ```
 
 Vercel Groq env:

@@ -1143,7 +1143,7 @@ function stopLiveSync() {
   liveSync.wallet = null;
 }
 
-function scheduleLiveRefresh(delay = 1500) {
+function scheduleLiveRefresh(delay = 12000) {
   if (!liveSync.wallet) return;
   clearTimeout(liveSync.refreshTimer);
   liveSync.refreshTimer = setTimeout(() => {
@@ -1166,7 +1166,7 @@ function startLiveWatch(wallet) {
       renderAssistant();
     }
   });
-  liveSync.pollTimer = setInterval(() => scheduleLiveRefresh(0), 60 * 1000);
+  liveSync.pollTimer = setInterval(() => scheduleLiveRefresh(0), 3 * 60 * 1000);
 }
 
 async function syncHyperliquidWallet(wallet, { silent = false } = {}) {

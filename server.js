@@ -123,6 +123,21 @@ function providerError(providerName, payload, status) {
   return message;
 }
 
+function isRetryableProviderFailure(result) {
+  const error = String(result.payload?.error ?? "").toLowerCase();
+  return (
+    result.status === 429 ||
+    result.status === 500 ||
+    result.status === 502 ||
+    result.status === 503 ||
+    result.status === 504 ||
+    error.includes("high demand") ||
+    error.includes("overloaded") ||
+    error.includes("rate limit") ||
+    error.includes("quota")
+  );
+}
+
 async function askGemini(question, context) {
   if (!geminiApiKey) {
     return {
@@ -218,8 +233,25 @@ async function askGroq(question, context) {
 }
 
 async function askProvider(question, context) {
-  if (provider === "groq") return askGroq(question, context);
-  if (provider === "gemini" || provider === "google") return askGemini(question, context);
+  if (provider === "groq") {
+    const result = await askGroq(question, context);
+    if (result.status !== 200 && geminiApiKey && isRetryableProviderFailure(result)) {
+      const fallback = await askGemini(question, context);
+      if (fallback.status === 200) fallback.payload.fallbackFrom = "groq";
+      return fallback.status === 200 ? fallback : result;
+    }
+    return result;
+  }
+
+  if (provider === "gemini" || provider === "google") {
+    const result = await askGemini(question, context);
+    if (result.status !== 200 && groqApiKey && isRetryableProviderFailure(result)) {
+      const fallback = await askGroq(question, context);
+      if (fallback.status === 200) fallback.payload.fallbackFrom = "gemini";
+      return fallback.status === 200 ? fallback : result;
+    }
+    return result;
+  }
 
   return {
     status: 400,

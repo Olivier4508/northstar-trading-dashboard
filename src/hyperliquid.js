@@ -2,6 +2,12 @@
   const INFO_URL = "https://api.hyperliquid.xyz/info";
   const WS_URL = "wss://api.hyperliquid.xyz/ws";
   const ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
+  const REQUEST_GAP_MS = 180;
+  const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   function assertWallet(user) {
     if (!ADDRESS_PATTERN.test(user)) {
@@ -18,7 +24,7 @@
     return [fill.hash, fill.oid, fill.time, fill.coin, fill.px, fill.sz, fill.side].join(":");
   }
 
-  async function postInfo(body) {
+  async function postInfo(body, attempt = 0) {
     const response = await fetch(INFO_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,10 +32,29 @@
     });
 
     if (!response.ok) {
+      if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < 3) {
+        const retryAfter = Number(response.headers.get("retry-after"));
+        const serverDelay = Number.isFinite(retryAfter) ? retryAfter * 1000 : 0;
+        const backoff = serverDelay || 650 * 2 ** attempt;
+        await sleep(backoff);
+        return postInfo(body, attempt + 1);
+      }
+
       throw new Error(`Hyperliquid ${body.type} failed with HTTP ${response.status}.`);
     }
 
     return response.json();
+  }
+
+  async function postInfoSeries(requests) {
+    const results = [];
+
+    for (const request of requests) {
+      results.push(await postInfo(request));
+      await sleep(REQUEST_GAP_MS);
+    }
+
+    return results;
   }
 
   function choosePortfolioWindow(portfolio) {
@@ -172,15 +197,15 @@
       metaAndAssetCtxs,
       spotClearinghouseState,
       spotMetaAndAssetCtxs
-    ] = await Promise.all([
-      postInfo({ type: "clearinghouseState", user }),
-      postInfo({ type: "portfolio", user }),
-      postInfo({ type: "userFillsByTime", user, startTime, endTime, aggregateByTime: true }),
-      postInfo({ type: "userFunding", user, startTime, endTime }),
-      postInfo({ type: "frontendOpenOrders", user }),
-      postInfo({ type: "metaAndAssetCtxs" }),
-      postInfo({ type: "spotClearinghouseState", user }),
-      postInfo({ type: "spotMetaAndAssetCtxs" })
+    ] = await postInfoSeries([
+      { type: "clearinghouseState", user },
+      { type: "portfolio", user },
+      { type: "userFillsByTime", user, startTime, endTime, aggregateByTime: true },
+      { type: "userFunding", user, startTime, endTime },
+      { type: "frontendOpenOrders", user },
+      { type: "metaAndAssetCtxs" },
+      { type: "spotClearinghouseState", user },
+      { type: "spotMetaAndAssetCtxs" }
     ]);
 
     const universe = metaAndAssetCtxs?.[0]?.universe ?? [];
