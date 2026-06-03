@@ -1,5 +1,9 @@
 {
+  "buildCommand": null,
   "cleanUrls": true,
+  "framework": null,
+  "installCommand": null,
+  "outputDirectory": ".",
   "functions": {
     "api/assistant.js": {
       "maxDuration": 30
