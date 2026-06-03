@@ -5,10 +5,7 @@ import { extname, join, normalize } from "node:path";
 const cwd = process.cwd();
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || "127.0.0.1";
-const openaiModel = process.env.OPENAI_MODEL || "gpt-4.1-nano";
 const maxBodyBytes = 1_500_000;
-const quotaErrorHelp =
-  "OpenAI quota is exhausted or billing is not active. Add API billing/credits or raise the project monthly budget in the OpenAI Platform, then redeploy/retry.";
 
 function loadEnvFile(fileName) {
   const filePath = join(cwd, fileName);
@@ -36,6 +33,13 @@ function loadEnvFile(fileName) {
 
 loadEnvFile(".env.local");
 loadEnvFile(".env");
+
+const provider =
+  (process.env.LLM_PROVIDER || (process.env.GROQ_API_KEY ? "groq" : "gemini")).toLowerCase();
+const geminiModel = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+const groqModel = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -74,17 +78,6 @@ function readJsonBody(request) {
   });
 }
 
-function extractResponseText(payload) {
-  if (payload.output_text) return payload.output_text;
-
-  return (payload.output ?? [])
-    .flatMap((item) => item.content ?? [])
-    .filter((content) => content.type === "output_text" || content.type === "text")
-    .map((content) => content.text)
-    .join("\n")
-    .trim();
-}
-
 function buildInstructions() {
   return [
     "You are Northstar's portfolio assistant for a Hyperliquid trading dashboard.",
@@ -97,25 +90,144 @@ function buildInstructions() {
   ].join("\n");
 }
 
-function getOpenAiErrorMessage(payload, status) {
-  const message = payload.error?.message ?? `OpenAI request failed with HTTP ${status}.`;
-  const code = payload.error?.code;
+function buildUserPayload(question, context) {
+  return JSON.stringify({ question, context }, null, 2);
+}
 
-  if (status === 429 && (code === "insufficient_quota" || message.toLowerCase().includes("quota"))) {
-    return quotaErrorHelp;
+function extractGeminiText(payload) {
+  return (payload.candidates ?? [])
+    .flatMap((candidate) => candidate.content?.parts ?? [])
+    .map((part) => part.text ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function extractGroqText(payload) {
+  return (payload.choices ?? [])
+    .map((choice) => choice.message?.content ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function providerError(providerName, payload, status) {
+  const message = payload.error?.message ?? `${providerName} request failed with HTTP ${status}.`;
+  const code = payload.error?.code;
+  const statusText = payload.error?.status ?? "";
+
+  if (status === 429 || code === 429 || statusText.includes("RESOURCE_EXHAUSTED")) {
+    return `${providerName} quota or rate limit was hit. Wait for the limit to reset or switch LLM_PROVIDER.`;
   }
 
   return message;
 }
 
-async function handleAssistant(request, response) {
-  if (!process.env.OPENAI_API_KEY) {
-    sendJson(response, 503, {
-      error: "OPENAI_API_KEY is not set. Launch the app through the local server with an OpenAI API key to enable the LLM assistant."
-    });
-    return;
+async function askGemini(question, context) {
+  if (!geminiApiKey) {
+    return {
+      status: 503,
+      payload: { error: "GEMINI_API_KEY is not set." }
+    };
   }
 
+  const geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: buildInstructions() }]
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: buildUserPayload(question, context) }]
+          }
+        ],
+        generationConfig: {
+          maxOutputTokens: 450,
+          temperature: 0.2
+        }
+      })
+    }
+  );
+  const payload = await geminiResponse.json();
+
+  if (!geminiResponse.ok) {
+    return {
+      status: geminiResponse.status,
+      payload: { error: providerError("Gemini", payload, geminiResponse.status) }
+    };
+  }
+
+  return {
+    status: 200,
+    payload: {
+      answer: extractGeminiText(payload) || "I could not produce an answer from the current context.",
+      model: payload.modelVersion ?? geminiModel,
+      provider: "gemini",
+      responseId: payload.responseId
+    }
+  };
+}
+
+async function askGroq(question, context) {
+  if (!groqApiKey) {
+    return {
+      status: 503,
+      payload: { error: "GROQ_API_KEY is not set." }
+    };
+  }
+
+  const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${groqApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: groqModel,
+      messages: [
+        { role: "system", content: buildInstructions() },
+        { role: "user", content: buildUserPayload(question, context) }
+      ],
+      max_tokens: 450,
+      temperature: 0.2
+    })
+  });
+  const payload = await groqResponse.json();
+
+  if (!groqResponse.ok) {
+    return {
+      status: groqResponse.status,
+      payload: { error: providerError("Groq", payload, groqResponse.status) }
+    };
+  }
+
+  return {
+    status: 200,
+    payload: {
+      answer: extractGroqText(payload) || "I could not produce an answer from the current context.",
+      model: payload.model ?? groqModel,
+      provider: "groq",
+      responseId: payload.id
+    }
+  };
+}
+
+async function askProvider(question, context) {
+  if (provider === "groq") return askGroq(question, context);
+  if (provider === "gemini" || provider === "google") return askGemini(question, context);
+
+  return {
+    status: 400,
+    payload: { error: `Unsupported LLM_PROVIDER "${provider}". Use "gemini" or "groq".` }
+  };
+}
+
+async function handleAssistant(request, response) {
   const body = await readJsonBody(request);
   const question = String(body.question ?? "").trim();
 
@@ -124,51 +236,8 @@ async function handleAssistant(request, response) {
     return;
   }
 
-  const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: openaiModel,
-      instructions: buildInstructions(),
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: JSON.stringify(
-                {
-                  question,
-                  context: body.context
-                },
-                null,
-                2
-              )
-            }
-          ]
-        }
-      ],
-      max_output_tokens: 450
-    })
-  });
-
-  const payload = await openaiResponse.json();
-
-  if (!openaiResponse.ok) {
-    sendJson(response, openaiResponse.status, {
-      error: getOpenAiErrorMessage(payload, openaiResponse.status)
-    });
-    return;
-  }
-
-  sendJson(response, 200, {
-    answer: extractResponseText(payload) || "I could not produce an answer from the current context.",
-    model: payload.model ?? openaiModel,
-    responseId: payload.id
-  });
+  const result = await askProvider(question, body.context);
+  sendJson(response, result.status, result.payload);
 }
 
 function serveStatic(request, response) {

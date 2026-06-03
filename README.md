@@ -24,23 +24,26 @@ Run the local server:
 
 Then open `http://127.0.0.1:3000`.
 
-To enable the LLM assistant, launch with an OpenAI API key in the environment:
+To enable the LLM assistant, launch with a Google AI Studio/Gemini key:
 
 ```bash
-OPENAI_API_KEY=... /Users/olivedf/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node server.js
+LLM_PROVIDER=gemini GEMINI_API_KEY=... /Users/olivedf/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node server.js
 ```
 
 Or create a private `.env.local` file in this folder:
 
 ```text
-OPENAI_API_KEY=...
-OPENAI_MODEL=gpt-4.1-nano
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-Optional:
+Groq is also supported:
 
-```bash
-OPENAI_MODEL=gpt-4.1-nano
+```text
+LLM_PROVIDER=groq
+GROQ_API_KEY=...
+GROQ_MODEL=llama-3.1-8b-instant
 ```
 
 If the app is opened directly as `index.html`, live Hyperliquid data still works, but the LLM assistant needs the local server at `http://127.0.0.1:3000`.
@@ -52,16 +55,19 @@ The app is ready for Vercel-style static hosting with a serverless assistant end
 - static app files are served from the project root
 - the hosted LLM endpoint lives at [api/assistant.js](/Users/olivedf/Documents/Trading%20Dashboard/api/assistant.js)
 - [vercel.json](/Users/olivedf/Documents/Trading%20Dashboard/vercel.json) configures the serverless function and no-store API responses
-- `OPENAI_API_KEY` is stored once in the hosting provider's environment variable settings
-- `OPENAI_MODEL` is optional and defaults to `gpt-4.1-nano`
+- `LLM_PROVIDER` chooses `gemini` or `groq`
+- `GEMINI_API_KEY` or `GROQ_API_KEY` is stored once in the hosting provider's environment variable settings
+- `GEMINI_MODEL` defaults to `gemini-2.5-flash-lite`
+- `GROQ_MODEL` defaults to `llama-3.1-8b-instant`
 
 On Vercel:
 
 1. Import this project/repo.
-2. Add `OPENAI_API_KEY` under Project Settings -> Environment Variables for Production and Preview.
-3. Optionally add `OPENAI_MODEL`.
-4. Deploy.
-5. Use the live URL instead of `index.html` or the local server.
+2. Add `LLM_PROVIDER` under Project Settings -> Environment Variables for Production and Preview.
+3. Add either `GEMINI_API_KEY` or `GROQ_API_KEY`.
+4. Optionally add `GEMINI_MODEL` or `GROQ_MODEL`.
+5. Deploy.
+6. Use the live URL instead of `index.html` or the local server.
 
 Vercel automatically serves Node functions from the `/api` directory, and environment variables are read by function code during execution.
 
@@ -72,6 +78,29 @@ npm run deploy
 ```
 
 The hosted app calls `/api/assistant` automatically, so no `.env.local` or local server is needed when using the live URL.
+
+## Assistant provider choice
+
+Default recommendation:
+
+- `gemini`: best first choice for answer quality and Google AI Studio's free testing tier.
+- `groq`: best fallback if you want ultra-fast responses and very low paid token prices.
+
+Vercel Gemini env:
+
+```text
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+Vercel Groq env:
+
+```text
+LLM_PROVIDER=groq
+GROQ_API_KEY=...
+GROQ_MODEL=llama-3.1-8b-instant
+```
 
 ## Quick launch on macOS
 
@@ -100,7 +129,7 @@ The browser remembers:
 - KPI card order
 - assistant conversation history
 
-The LLM receives the current dashboard context plus the stored chat transcript visible in the app. Local fallback answers still work if the server is unavailable or `OPENAI_API_KEY` is not set.
+The LLM receives the current dashboard context plus the stored chat transcript visible in the app. Local fallback answers still work if the server is unavailable or the selected provider key is not set.
 
 ## Hyperliquid live sync
 

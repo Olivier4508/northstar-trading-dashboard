@@ -329,7 +329,7 @@ function buildAssistantContext() {
         "Portfolio Value uses Hyperliquid spotClearinghouseState when available because it reflects the unified account balance.",
         "Perps Account is kept as a separate metric because clearinghouseState marginSummary.accountValue can be much lower than unified portfolio value.",
         "TradingView widgets are official Advanced Chart embeds, not custom-drawn charts.",
-        "The assistant is server-backed when the local app is launched with OPENAI_API_KEY; otherwise browser fallback answers are used.",
+        "The assistant is server-backed when the hosted or local app has a Gemini or Groq API key configured; otherwise browser fallback answers are used.",
         "No trading keys, private keys, or signed execution requests are used in the current version."
       ]
     },
@@ -392,7 +392,7 @@ async function askLlmAssistant(question) {
     });
   } catch {
     throw new Error(
-      "the assistant API is not reachable. If you are running locally, start launch-dashboard.sh; if this is hosted, check the deployment and OPENAI_API_KEY environment variable."
+      "the assistant API is not reachable. If you are running locally, start launch-dashboard.sh; if this is hosted, check the deployment and selected provider API key."
     );
   }
 
